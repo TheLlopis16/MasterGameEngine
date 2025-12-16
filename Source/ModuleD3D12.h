@@ -26,7 +26,7 @@ private:
 	HANDLE event = NULL;
 	uint64_t fenceCounter = 0;
 	uint64_t fenceValues[FRAMES_IN_FLIGHT] = { 0, 0, 0 };
-	unsigned currentIndex;
+	unsigned currentIndex = 0;
 
 	unsigned windowWidth = 0;
 	unsigned windowHeight = 0;
@@ -39,6 +39,9 @@ public:
 	void preRender() override;
 	void postRender() override;
 
+	void resize();
+	void flush();
+
 	HWND getHwnd() { return hWnd; }
 	ID3D12Device5* getDevice() { return device.Get(); }
 	ID3D12CommandQueue* getCommandQueue() { return commandQueue.Get(); }
@@ -48,6 +51,9 @@ public:
 
 	D3D12_CPU_DESCRIPTOR_HANDLE getRenderTargetDescriptor();
 
+	unsigned getWindowWidth() const { return windowWidth; }
+	unsigned getWindowHeight() const { return windowHeight; }
+
 	void enableDebugLayer();
 	void createDevice();
 	void createInfoQueue();
@@ -56,4 +62,5 @@ public:
 	void createSwapChain();
 	void createRTV();
 	void createFence();
+	unsigned getWindowSize(unsigned& width, unsigned& height);
 };
