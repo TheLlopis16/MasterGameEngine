@@ -1,4 +1,4 @@
-#pragma once
+/*#pragma once
 
 #include "Module.h"
 #include "DebugDrawPass.h"
@@ -20,4 +20,4 @@ private:
 	void createVertexBuffer();
 	bool createRootSignature();
 	void createPSO();
-};
+};*/

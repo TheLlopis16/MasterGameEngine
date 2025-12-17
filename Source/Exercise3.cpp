@@ -8,7 +8,7 @@
 
 #include <d3d12.h>
 #include "d3dx12.h"
-
+/*
 bool Exercise3::init()
 {
 	createVertexBuffer();
@@ -144,4 +144,4 @@ void Exercise3::createPSO()
 
 	app->getD3D12()->getDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&PSO));
 
-}
+}*/
