@@ -6,16 +6,19 @@
 #include "Exercise2.h"
 #include "Exercise3.h"
 #include "Exercise4.h"
+#include "Assignment1.h"
 #include "ModuleEditor.h"
 #include "ModuleResources.h"
 #include "ModuleShaderDescriptors.h"
 #include "ModuleSampler.h"
+#include "ModuleCamera.h"
 
 
 Application::Application(int argc, wchar_t** argv, void* hWnd)
 {
     modules.push_back(new ModuleInput((HWND)hWnd));
     modules.push_back(d3d12 = new ModuleD3D12((HWND)hWnd));
+    modules.push_back(camera = new ModuleCamera());
     //modules.push_back(new Exercise1());
     //modules.push_back(new ModuleEditor());
     modules.push_back(resources = new ModuleResources());
@@ -23,7 +26,8 @@ Application::Application(int argc, wchar_t** argv, void* hWnd)
     modules.push_back(samplers = new ModuleSampler());
     //modules.push_back(new Exercise2());
     //modules.push_back(new Exercise3());
-    modules.push_back(new Exercise4());
+    //modules.push_back(new Exercise4());
+    modules.push_back(new Assignment1());
 }
 
 Application::~Application()
