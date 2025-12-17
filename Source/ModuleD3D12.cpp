@@ -25,6 +25,7 @@ bool ModuleD3D12::init()
 	createSwapChain();
 	createRTV();
 	createFence();
+	createDepthStencil();
 
 	return true;
 }
@@ -185,6 +186,7 @@ void ModuleD3D12::resize()
 		if (windowWidth > 0 && windowHeight > 0)
 		{
 			createRTV();
+			createDepthStencil();
 		}
 	}
 
@@ -195,4 +197,33 @@ void ModuleD3D12::flush()
 	commandQueue->Signal(fence.Get(), ++fenceCounter);
 	fence->SetEventOnCompletion(fenceCounter, event);
 	WaitForSingleObject(event, INFINITE);
+}
+
+void ModuleD3D12::createDepthStencil()
+{
+	CD3DX12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, windowWidth, windowHeight,
+		1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+
+	D3D12_CLEAR_VALUE clearValue = {};
+	clearValue.Format = DXGI_FORMAT_D32_FLOAT;
+	clearValue.DepthStencil.Depth = 1.0f;
+	clearValue.DepthStencil.Stencil = 0;
+
+	device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(&depthStencilBuffer));
+
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.NumDescriptors = 1;
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+	device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&dsvDescriptorHeap));
+
+	device->CreateDepthStencilView(depthStencilBuffer.Get(), nullptr, dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE ModuleD3D12::getDepthStencilDescriptor()
+{
+	return dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 }

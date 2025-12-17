@@ -4,6 +4,7 @@
 #include "ModuleD3D12.h"
 #include "Exercise1.h"
 #include "Exercise2.h"
+#include "Exercise3.h"
 #include "ModuleEditor.h"
 #include "ModuleResources.h"
 
@@ -15,7 +16,8 @@ Application::Application(int argc, wchar_t** argv, void* hWnd)
     //modules.push_back(new Exercise1());
     //modules.push_back(new ModuleEditor());
     modules.push_back(resources = new ModuleResources());
-    modules.push_back(new Exercise2());
+    //modules.push_back(new Exercise2());
+    modules.push_back(new Exercise3());
 }
 
 Application::~Application()

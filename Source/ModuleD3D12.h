@@ -21,6 +21,8 @@ private:
 	ComPtr<IDXGISwapChain4> swapChain;
 	ComPtr<ID3D12Resource> backBuffers[FRAMES_IN_FLIGHT];
 	ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap;
+	ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap;
+	ComPtr<ID3D12Resource> depthStencilBuffer;
 
 	ComPtr<ID3D12Fence> fence;
 	HANDLE event = NULL;
@@ -50,6 +52,7 @@ public:
 	ID3D12Resource* getCurrentBackBuffer() { return backBuffers[currentIndex].Get(); }
 
 	D3D12_CPU_DESCRIPTOR_HANDLE getRenderTargetDescriptor();
+	D3D12_CPU_DESCRIPTOR_HANDLE getDepthStencilDescriptor();
 
 	unsigned getWindowWidth() const { return windowWidth; }
 	unsigned getWindowHeight() const { return windowHeight; }
@@ -62,5 +65,6 @@ public:
 	void createSwapChain();
 	void createRTV();
 	void createFence();
+	void createDepthStencil();
 	unsigned getWindowSize(unsigned& width, unsigned& height);
 };
