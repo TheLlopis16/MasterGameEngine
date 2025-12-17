@@ -6,16 +6,12 @@
 
 ModuleResources::ModuleResources() {}
 
-ModuleResources::~ModuleResources()
-{
-	device = nullptr;
-	d3d12 = nullptr;
-}
+ModuleResources::~ModuleResources() {}
 
 bool ModuleResources::init()
 {
-	d3d12 = app->getD3D12();
-	device = d3d12->getDevice();
+	ModuleD3D12* d3d12 = app->getD3D12();
+	ID3D12Device5* device = d3d12->getDevice();
 	device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
 	device->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList));
 	commandList->Reset(commandAllocator.Get(), nullptr);
@@ -25,7 +21,8 @@ bool ModuleResources::init()
 
 ComPtr<ID3D12Resource> ModuleResources::createUploadBuffer(size_t size, void* cpuData)
 {
-
+	ModuleD3D12* d3d12 = app->getD3D12();
+	ID3D12Device5* device = d3d12->getDevice();
 	ComPtr<ID3D12Resource> buffer;
 
 	D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(size);
@@ -45,18 +42,21 @@ ComPtr<ID3D12Resource> ModuleResources::createUploadBuffer(size_t size, void* cp
 
 ComPtr<ID3D12Resource> ModuleResources::createDefaultBuffer(size_t size, void* data)
 {
+	ModuleD3D12* d3d12 = app->getD3D12();
+	ID3D12Device5* device = d3d12->getDevice();
 	ID3D12CommandQueue* commandQueue = d3d12->getCommandQueue();
 
 	ComPtr<ID3D12Resource> vertexBuffer;
 
-	auto defaultHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(size);
-	device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&vertexBuffer));
+	CD3DX12_HEAP_PROPERTIES defaultHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	D3D12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(size);
+	device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&vertexBuffer));
 
 	ComPtr<ID3D12Resource> stagingBuffer;
 
-	auto uploadHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&stagingBuffer));
+	CD3DX12_HEAP_PROPERTIES uploadHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	D3D12_RESOURCE_DESC stagingDesc = CD3DX12_RESOURCE_DESC::Buffer(size);
+	device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &stagingDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&stagingBuffer));
 
 	BYTE* pData = nullptr;
 	CD3DX12_RANGE readRange(0, 0);
@@ -68,7 +68,7 @@ ComPtr<ID3D12Resource> ModuleResources::createDefaultBuffer(size_t size, void* d
 	commandList->Close();
 
 	ID3D12CommandList* commandLists[] = { commandList.Get() };
-	commandQueue->ExecuteCommandLists(1, commandLists);
+	commandQueue->ExecuteCommandLists(UINT(std::size(commandLists)), commandLists);
 
 	d3d12->flush();
 

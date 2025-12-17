@@ -45,7 +45,7 @@ public:
 	HWND getHwnd() { return hWnd; }
 	ID3D12Device5* getDevice() { return device.Get(); }
 	ID3D12CommandQueue* getCommandQueue() { return commandQueue.Get(); }
-	ID3D12GraphicsCommandList4* getCommandList() { return commandList.Get(); }
+	ID3D12GraphicsCommandList* getCommandList() { return commandList.Get(); }
 	ID3D12CommandAllocator* getCurrentCommandAllocator() { return commandAllocators[currentIndex].Get(); }
 	ID3D12Resource* getCurrentBackBuffer() { return backBuffers[currentIndex].Get(); }
 
