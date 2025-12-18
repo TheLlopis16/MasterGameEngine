@@ -6,7 +6,7 @@ Engine built for the UPC Masters Degree.
 
 1) Download the release from the GitHub repository.
 2) Unzip the package into your computer.
-3) Open the ```Source\build\out\x64\Release``` folder and run ```Engine.exe```.
+3) Open the ```Engine``` folder and run ```Engine.exe```.
 
 ## License 
 
