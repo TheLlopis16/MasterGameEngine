@@ -21,10 +21,9 @@ bool Assignment1::init()
 	ModuleD3D12* d3d12 = app->getD3D12();
 	ModuleResources* resources = app->getResources();
 	ModuleShaderDescriptors* shaderDescriptors = app->getShaderDescriptors();
-	debugDrawPass = std::make_unique<DebugDrawPass>(d3d12->getDevice(), d3d12->getCommandQueue(), false);
+	debugDrawPass = std::make_unique<DebugDrawPass>(d3d12->getDevice(), d3d12->getCommandQueue());
 	imGuiPass = std::make_unique<ImGuiPass>(d3d12->getDevice(), d3d12->getHwnd());
 
-	return true;
 	textureDog = resources->createTextureFromFile(std::wstring(L"Assets/Textures/dog.dds"));
 	shaderDescriptors->allocateDescriptor();
 	srvIndex = shaderDescriptors->createSRV(textureDog.Get());

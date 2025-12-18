@@ -21,11 +21,13 @@ bool Exercise4::init()
 	ModuleD3D12* d3d12 = app->getD3D12();
 	ModuleResources* resources = app->getResources();
 	ModuleShaderDescriptors* shaderDescriptors = app->getShaderDescriptors();
-	debugDrawPass = std::make_unique<DebugDrawPass>(d3d12->getDevice(), d3d12->getCommandQueue(), false);
+	debugDrawPass = std::make_unique<DebugDrawPass>(d3d12->getDevice(), d3d12->getCommandQueue());
 
 	textureDog = resources->createTextureFromFile(std::wstring(L"Assets/Textures/dog.dds"));
 	shaderDescriptors->allocateDescriptor();
 	srvIndex = shaderDescriptors->createSRV(textureDog.Get());
+
+	return true;
 }
 
 void Exercise4::render()

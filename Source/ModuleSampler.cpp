@@ -33,7 +33,7 @@ bool ModuleSampler::init()
             D3D12_TEXTURE_ADDRESS_MODE_WRAP,
             D3D12_TEXTURE_ADDRESS_MODE_WRAP,
             D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-            0, 16, D3D12_COMPARISON_FUNC_NONE,
+            0, 16, D3D12_COMPARISON_FUNC_ALWAYS,    //Con D3D12_COMPARISON_FUNC_NONE no me iba
             {0.0f, 0.0f, 0.0f, 0.0f},
             0.0f, D3D12_FLOAT32_MAX
         },
@@ -43,7 +43,7 @@ bool ModuleSampler::init()
             D3D12_TEXTURE_ADDRESS_MODE_WRAP,
             D3D12_TEXTURE_ADDRESS_MODE_WRAP,
             D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-            0, 16, D3D12_COMPARISON_FUNC_NONE,
+            0, 16, D3D12_COMPARISON_FUNC_ALWAYS,    //Con D3D12_COMPARISON_FUNC_NONE no me iba
             {0.0f, 0.0f, 0.0f, 0.0f},
             0.0f, D3D12_FLOAT32_MAX
         },
@@ -53,7 +53,7 @@ bool ModuleSampler::init()
             D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
             D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
             D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-            0, 16, D3D12_COMPARISON_FUNC_NONE,
+            0, 16, D3D12_COMPARISON_FUNC_ALWAYS,    //Con D3D12_COMPARISON_FUNC_NONE no me iba
             {0.0f, 0.0f, 0.0f, 0.0f},
             0.0f, D3D12_FLOAT32_MAX
         },
@@ -63,7 +63,7 @@ bool ModuleSampler::init()
             D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
             D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
             D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-            0, 16, D3D12_COMPARISON_FUNC_NONE,
+            0, 16, D3D12_COMPARISON_FUNC_ALWAYS,    //Con D3D12_COMPARISON_FUNC_NONE no me iba
             {0.0f, 0.0f, 0.0f, 0.0f},
             0.0f, D3D12_FLOAT32_MAX
         }
