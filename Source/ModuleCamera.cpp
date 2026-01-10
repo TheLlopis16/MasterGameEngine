@@ -39,7 +39,6 @@ void ModuleCamera::update()
     if (enabled)
     {
         Keyboard& keyboard = Keyboard::Get();
-
         const Keyboard::State& keyState = keyboard.GetState();
 
         float elapsedSec = app->getElapsedMilis() * 0.005f;
@@ -50,8 +49,19 @@ void ModuleCamera::update()
         Vector3 translate = Vector3::Zero;
         Vector2 rotate = Vector2::Zero;
 
+        if (keyState.F)
+        {
+            params.worldSpacePosition = Vector3(0.0f, 1.0f, 10.0f);
+            position = Vector3(0.0f, 1.0f, 10.0f);
+            params.yaw = 0.0f;
+            params.pitch = 0.0f;
+            rotation = Quaternion::Identity;
+            return;
+        }
+
         if (mouseState.rightButton)
         {
+            SetCursor(LoadCursor(NULL, IDC_CROSS));
             rotate.x = float(dragPosX - mouseState.x) * 0.005f;
             rotate.y = float(dragPosY - mouseState.y) * 0.005f;
 
@@ -67,8 +77,9 @@ void ModuleCamera::update()
         {
             if (mouseState.leftButton)
             {
-                translate.x = float(dragPosX - mouseState.x) * 0.005f;
-                translate.y = float(dragPosY - mouseState.y) * 0.005f;
+                SetCursor(LoadCursor(NULL, IDC_SIZEALL));
+                translate.x = float(dragPosX - mouseState.x) * 0.001f;
+                translate.y = float(dragPosY - mouseState.y) * 0.001f;
                 rotate.x = float(dragPosX - mouseState.x) * 0.005f;
                 rotate.y = float(dragPosY - mouseState.y) * 0.005f;
             }

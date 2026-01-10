@@ -1,13 +1,12 @@
 #pragma once
 
 #include "Module.h"
-#include "dxgi1_6.h"
+#include <dxgi1_6.h>
 
 class ModuleD3D12 : public Module
 {
 	HWND hWnd = NULL;
 
-private:
 	ComPtr<IDXGIFactory6> factory;
 	ComPtr<IDXGIAdapter4> adapter;
 	ComPtr<ID3D12Device5> device;
@@ -34,6 +33,7 @@ private:
 	unsigned windowHeight = 0;
 
 public:
+
 	ModuleD3D12(HWND hwnd);
 	~ModuleD3D12();
 
@@ -57,14 +57,18 @@ public:
 	unsigned getWindowWidth() const { return windowWidth; }
 	unsigned getWindowHeight() const { return windowHeight; }
 
+private:
+
 	void enableDebugLayer();
-	void createDevice();
+	bool createFactory();
+	bool createDevice();
 	void createInfoQueue();
-	void createCommandQueue();
-	void createCommandList();
-	void createSwapChain();
-	void createRTV();
-	void createFence();
-	void createDepthStencil();
+	bool createCommandQueue();
+	bool createCommandList();
+	bool createSwapChain();
+	bool createRTV();
+	bool createFence();
+	bool createDepthStencil();
+
 	unsigned getWindowSize(unsigned& width, unsigned& height);
 };

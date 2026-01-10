@@ -12,10 +12,10 @@
 bool Exercise2::init()
 {
 	createVertexBuffer();
-	bool ok = createRootSignature();
+	bool success = createRootSignature();
 	createPSO();
 
-	return ok;
+	return success;
 }
 
 void Exercise2::render()
@@ -62,8 +62,8 @@ void Exercise2::createVertexBuffer()
 
 	Vertex vertices[3] =
 	{
-		{-1.0f, -1.0f, 0.0f },
-		{ 0.0f,  1.0f, 0.0f },
+		{ -1.0f, -1.0f, 0.0f },
+		{ 0.0f, 1.0f, 0.0f },
 		{ 1.0f, -1.0f, 0.0f }
 	};
 
@@ -115,9 +115,6 @@ void Exercise2::createPSO()
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 
-	HRESULT hr = app->getD3D12()->getDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&PSO));
-	if (FAILED(hr))
-	{
-		LOG("CreateGraphicsPipelineState failed: 0x%08X", hr);
-	}
+	app->getD3D12()->getDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&PSO));
+
 }

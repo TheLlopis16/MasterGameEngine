@@ -3,6 +3,7 @@
 #include "ModuleResources.h"
 #include "Application.h"
 #include "ModuleD3D12.h"
+
 #include "DirectXTex.h"
 
 ModuleResources::ModuleResources() {}
@@ -11,13 +12,16 @@ ModuleResources::~ModuleResources() {}
 
 bool ModuleResources::init()
 {
+	bool success = false;
+
 	ModuleD3D12* d3d12 = app->getD3D12();
 	ID3D12Device5* device = d3d12->getDevice();
-	device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
-	device->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList));
-	commandList->Reset(commandAllocator.Get(), nullptr);
 
-	return true;
+	success = SUCCEEDED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator)));
+	success = success && SUCCEEDED(device->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
+	success = success && SUCCEEDED(commandList->Reset(commandAllocator.Get(), nullptr));
+
+	return success;
 }
 
 ComPtr<ID3D12Resource> ModuleResources::createUploadBuffer(size_t size, void* cpuData)
@@ -96,39 +100,72 @@ ComPtr<ID3D12Resource> ModuleResources::createTextureFromFile(const std::filesys
 
 	ComPtr<ID3D12Resource> texture;
 	const TexMetadata& metaData = image.GetMetadata();
-
-	D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(metaData.format, UINT64(metaData.width),
-		UINT(metaData.height), UINT16(metaData.arraySize), UINT16(metaData.mipLevels));
+	D3D12_RESOURCE_DESC desc = {};
 
 	CD3DX12_HEAP_PROPERTIES heap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-	device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&texture));
-
-
-
 	ComPtr<ID3D12Resource> intermediate;
-	UINT64 size = GetRequiredIntermediateSize(texture.Get(), 0, image.GetImageCount());
-
+	UINT64 size;
 	CD3DX12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	CD3DX12_RESOURCE_DESC intDesc = CD3DX12_RESOURCE_DESC::Buffer(size);
-	device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &intDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&intermediate));
-
-
-
+	CD3DX12_RESOURCE_DESC intDesc;
 	std::vector<D3D12_SUBRESOURCE_DATA> subData;
-	subData.reserve(image.GetImageCount());
 
-	for (size_t item = 0; item < metaData.arraySize; ++item)
+
+	if (metaData.mipLevels == 1)
 	{
-		for (size_t level = 0; level < metaData.mipLevels; ++level)
+		ScratchImage mipChain;
+		HRESULT hr = GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), TEX_FILTER_DEFAULT, 0, mipChain);
+		const TexMetadata& mipChainMetaData = mipChain.GetMetadata();
+		desc = CD3DX12_RESOURCE_DESC::Tex2D(mipChainMetaData.format, UINT64(mipChainMetaData.width),
+			UINT(mipChainMetaData.height), UINT16(mipChainMetaData.arraySize), UINT16(mipChainMetaData.mipLevels));
+
+		device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&texture));
+
+		size = GetRequiredIntermediateSize(texture.Get(), 0, mipChain.GetImageCount());
+
+		intDesc = CD3DX12_RESOURCE_DESC::Buffer(size);
+		device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &intDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&intermediate));
+
+		subData.reserve(mipChain.GetImageCount());
+
+		for (size_t item = 0; item < mipChainMetaData.arraySize; ++item)
 		{
-			const DirectX::Image* subImg = image.GetImage(level, item, 0);
-			D3D12_SUBRESOURCE_DATA data = { subImg->pixels, subImg->rowPitch, subImg->slicePitch };
-			subData.push_back(data);
+			for (size_t level = 0; level < mipChainMetaData.mipLevels; ++level)
+			{
+				const DirectX::Image* subImg = mipChain.GetImage(level, item, 0);
+				D3D12_SUBRESOURCE_DATA data = { subImg->pixels, subImg->rowPitch, subImg->slicePitch };
+				subData.push_back(data);
+			}
 		}
+
+		UpdateSubresources(commandList.Get(), texture.Get(), intermediate.Get(), 0, 0, UINT(mipChain.GetImageCount()), subData.data());
+
 	}
+	else
+	{
+		desc = CD3DX12_RESOURCE_DESC::Tex2D(metaData.format, UINT64(metaData.width),
+			UINT(metaData.height), UINT16(metaData.arraySize), UINT16(metaData.mipLevels));
 
-	UpdateSubresources(commandList.Get(), texture.Get(), intermediate.Get(), 0, 0, UINT(image.GetImageCount()), subData.data());
+		device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&texture));
 
+		size = GetRequiredIntermediateSize(texture.Get(), 0, image.GetImageCount());
+
+		intDesc = CD3DX12_RESOURCE_DESC::Buffer(size);
+		device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &intDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&intermediate));
+
+		subData.reserve(image.GetImageCount());
+
+		for (size_t item = 0; item < metaData.arraySize; ++item)
+		{
+			for (size_t level = 0; level < metaData.mipLevels; ++level)
+			{
+				const DirectX::Image* subImg = image.GetImage(level, item, 0);
+				D3D12_SUBRESOURCE_DATA data = { subImg->pixels, subImg->rowPitch, subImg->slicePitch };
+				subData.push_back(data);
+			}
+		}
+
+		UpdateSubresources(commandList.Get(), texture.Get(), intermediate.Get(), 0, 0, UINT(image.GetImageCount()), subData.data());
+	}
 
 
 	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -143,5 +180,5 @@ ComPtr<ID3D12Resource> ModuleResources::createTextureFromFile(const std::filesys
 	commandList->Reset(commandAllocator.Get(), nullptr);
 
 	return texture;
-
 }
+

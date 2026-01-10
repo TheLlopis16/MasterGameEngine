@@ -2,6 +2,8 @@
 
 #include "Module.h"
 #include "DebugDrawPass.h"
+#include "ModuleSampler.h"
+#include "ImGuiPass.h"
 
 class Exercise4 : public Module
 {
@@ -11,11 +13,16 @@ class Exercise4 : public Module
 	ComPtr<ID3D12RootSignature> rootSignature;
 	ComPtr<ID3D12PipelineState> PSO;
 	std::unique_ptr<DebugDrawPass> debugDrawPass;
+	std::unique_ptr<ImGuiPass> imGuiPass;
 	UINT srvIndex = 0;
+	int sampler = int(ModuleSampler::LINEAR_WRAP);
+	bool showGrid = true;
+	bool showAxis = true;
 
 public:
 
 	bool init() override;
+	void preRender() override;
 	void render() override;
 
 private:

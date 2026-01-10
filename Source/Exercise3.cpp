@@ -8,7 +8,7 @@
 
 #include <d3d12.h>
 #include "d3dx12.h"
-/*
+
 bool Exercise3::init()
 {
 	createVertexBuffer();
@@ -42,7 +42,7 @@ void Exercise3::render()
 	D3D12_CPU_DESCRIPTOR_HANDLE rtv = d3d12->getRenderTargetDescriptor();
 	D3D12_CPU_DESCRIPTOR_HANDLE dsv = d3d12->getDepthStencilDescriptor();
 
-	float clear[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	float clear[] = { 0.1f, 0.1f, 0.1f, 1.0f };
 	commandList->OMSetRenderTargets(1, &rtv, false, &dsv);
 	commandList->ClearRenderTargetView(rtv, clear, 0, nullptr);
 	commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
@@ -59,7 +59,7 @@ void Exercise3::render()
 	commandList->DrawInstanced(3, 1, 0, 0);
 
 	dd::xzSquareGrid(-10.0f, 10.0f, 0.0f, 1.0f, dd::colors::LightGray);
-	dd::axisTriad(ddConvert(Matrix::Identity), 0.1f, 1.0f);
+	dd::axisTriad(ddConvert(Matrix::Identity), 0.1f, 2.0f);
 
 	debugDrawPass->record(commandList, d3d12->getWindowWidth(), d3d12->getWindowHeight(), view, proj);
 
@@ -85,7 +85,7 @@ void Exercise3::createVertexBuffer()
 	{
 		{ -1.0f, -1.0f, 0.0f },
 		{ 0.0f, 1.0f, 0.0f },
-		{ 1.0f, -1.0f, 0.0f }
+		{ 1.0f, -1.0f, 0.0f },
 	};
 
 	vertexBuffer = app->getResources()->createDefaultBuffer(sizeof(vertices), vertices);
@@ -144,4 +144,4 @@ void Exercise3::createPSO()
 
 	app->getD3D12()->getDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&PSO));
 
-}*/
+}

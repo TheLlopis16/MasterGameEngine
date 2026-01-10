@@ -5,6 +5,8 @@
 #include "ModuleSampler.h"
 #include "ImGuiPass.h"
 
+class ModuleEditor;
+
 class Assignment1 : public Module
 {
 	ComPtr<ID3D12Resource> textureDog;
@@ -13,11 +15,12 @@ class Assignment1 : public Module
 	ComPtr<ID3D12RootSignature> rootSignature;
 	ComPtr<ID3D12PipelineState> PSO;
 	std::unique_ptr<DebugDrawPass> debugDrawPass;
-	std::unique_ptr<ImGuiPass> imGuiPass;
+	ImGuiPass* imGuiPass = nullptr;
 	UINT srvIndex = 0;
 	int sampler = int(ModuleSampler::LINEAR_WRAP);
 	bool showGrid = true;
 	bool showAxis = true;
+	bool freeLook = false;
 
 public:
 

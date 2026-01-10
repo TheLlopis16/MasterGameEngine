@@ -7,6 +7,7 @@
 #include <d3d12.h>
 #include "d3dx12.h"
 
+
 void Exercise1::render()
 {
 	ModuleD3D12* d3d12 = app->getD3D12();

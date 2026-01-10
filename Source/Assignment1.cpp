@@ -8,7 +8,9 @@
 #include "ModuleShaderDescriptors.h"
 #include "ReadData.h"
 #include "ModuleSampler.h"
+#include "ModuleEditor.h"
 
+#include "DirectXTex.h"
 #include <d3d12.h>
 #include "d3dx12.h"
 
@@ -21,13 +23,13 @@ bool Assignment1::init()
 	ModuleD3D12* d3d12 = app->getD3D12();
 	ModuleResources* resources = app->getResources();
 	ModuleShaderDescriptors* shaderDescriptors = app->getShaderDescriptors();
-	debugDrawPass = std::make_unique<DebugDrawPass>(d3d12->getDevice(), d3d12->getCommandQueue());
-	imGuiPass = std::make_unique<ImGuiPass>(d3d12->getDevice(), d3d12->getHwnd());
+	ModuleEditor* editor = app->getEditor();
+	debugDrawPass = std::make_unique<DebugDrawPass>(d3d12->getDevice(), d3d12->getCommandQueue(), false);
+	imGuiPass = editor->getImGui();
 
 	textureDog = resources->createTextureFromFile(std::wstring(L"Assets/Textures/dog.dds"));
 	shaderDescriptors->allocateDescriptor();
 	srvIndex = shaderDescriptors->createSRV(textureDog.Get());
-
 
 	return success;
 }
@@ -39,11 +41,17 @@ void Assignment1::preRender()
 
 void Assignment1::render()
 {
+	ModuleEditor* editor = app->getEditor();
+	ImGui::SetNextWindowSize(ImVec2(320, 160), ImGuiCond_Always);
 	ImGui::Begin("Texture Viewer Options");
-	ImGui::Checkbox("Show grid", &showGrid);
-	ImGui::Checkbox("Show axis", &showAxis);
-	ImGui::Combo("Sampler", &sampler, "Linear/Wrap\0Point/Wrap\0Linear/Clamp\0Point/Clamp", ModuleSampler::COUNT);
+	ImGui::Checkbox("Show Grid", &showGrid);
+	ImGui::Checkbox("Show Axis", &showAxis);
+	ImGui::Combo("Sampler", &sampler, "Billinear Filtering Wrap\0Point Filtering Wrap\0Billinear Filtering Clamp\0Point Filtering Clamp", ModuleSampler::COUNT);
 	ImGui::End();
+
+	if (editor->getShowAssets()) editor->assetsWindow();
+	if (editor->getShowConfig()) editor->configurationWindow();
+	if (editor->getShowMenu()) editor->mainMenu();
 
 	ModuleD3D12* d3d12 = app->getD3D12();
 	ModuleCamera* camera = app->getCamera();
@@ -52,15 +60,24 @@ void Assignment1::render()
 	ID3D12GraphicsCommandList* commandList = d3d12->getCommandList();
 	ModuleShaderDescriptors* shaderDescriptors = app->getShaderDescriptors();
 
+	ImGui::SetNextWindowSize(ImVec2(320, 160), ImGuiCond_Always);
+	ImGui::Begin("Camera Options");
+	ImGui::Checkbox("Free Look", &freeLook);
+	camera->setEnabled(freeLook);
+	ImGui::End();
+
+
 	commandList->Reset(d3d12->getCurrentCommandAllocator(), PSO.Get());
 	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(d3d12->getCurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	commandList->ResourceBarrier(1, &barrier);
 
 	unsigned width = d3d12->getWindowWidth();
 	unsigned height = d3d12->getWindowHeight();
+
 	Matrix model = Matrix::Identity;
 	const Matrix view = camera->getView();
 	Matrix proj = ModuleCamera::getPerspectiveProjection(float(width) / float(height));
+
 	Matrix mvp = model * view * proj;
 	mvp = mvp.Transpose();
 
@@ -167,6 +184,7 @@ bool Assignment1::createRootSignature()
 		return false;
 
 	return true;
+
 }
 
 void Assignment1::createPSO()
@@ -175,23 +193,23 @@ void Assignment1::createPSO()
 	D3D12_INPUT_ELEMENT_DESC inputLayout[] = { {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 											  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0} };
 
-	auto dataVS = DX::ReadData(L"Exercise4VS.cso");
-	auto dataPS = DX::ReadData(L"Exercise4PS.cso");
+	auto dataVS = DX::ReadData(L"Assignment1VS.cso");
+	auto dataPS = DX::ReadData(L"Assignment1PS.cso");
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-	psoDesc.InputLayout = { inputLayout, sizeof(inputLayout) / sizeof(D3D12_INPUT_ELEMENT_DESC) };  // the structure describing our input layout
-	psoDesc.pRootSignature = rootSignature.Get();                                                   // the root signature that describes the input data this pso needs
-	psoDesc.VS = { dataVS.data(), dataVS.size() };                                                  // structure describing where to find the vertex shader bytecode and how large it is
-	psoDesc.PS = { dataPS.data(), dataPS.size() };                                                  // same as VS but for pixel shader
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;                         // type of topology we are drawing
-	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;                                             // format of the render target
+	psoDesc.InputLayout = { inputLayout, sizeof(inputLayout) / sizeof(D3D12_INPUT_ELEMENT_DESC) };
+	psoDesc.pRootSignature = rootSignature.Get();
+	psoDesc.VS = { dataVS.data(), dataVS.size() };
+	psoDesc.PS = { dataPS.data(), dataPS.size() };
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	psoDesc.SampleDesc = { 1, 0 };                                                                    // must be the same sample description as the swapchain and depth/stencil buffer
-	psoDesc.SampleMask = 0xffffffff;                                                                // sample mask has to do with multi-sampling. 0xffffffff means point sampling is done
-	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);                               // a default rasterizer state.
+	psoDesc.SampleDesc = { 1, 0 };
+	psoDesc.SampleMask = 0xffffffff;
+	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);                                         // a default blend state.
-	psoDesc.NumRenderTargets = 1;                                                                   // we are only binding one render target
+	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	psoDesc.NumRenderTargets = 1;
 
 	// create the pso
 	app->getD3D12()->getDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&PSO));

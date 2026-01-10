@@ -2,14 +2,14 @@
 
 #include "Module.h"
 #include <chrono>
+#include <filesystem>
 
 class ImGuiPass;
 class ModuleD3D12;
 
 class ModuleEditor : public Module
 {
-	ImGuiPass* imguiPass = nullptr;
-	ImGuiIO* io = nullptr;
+	ImGuiPass* imGuiPass = nullptr;
 
 	int maxFps = 0;
 	double currentFPS = 0.0;
@@ -19,10 +19,17 @@ class ModuleEditor : public Module
 	float msHistory[HISTORY_SIZE] = {};
 	int historyIndex = 0;
 
-	double sampleIntervalMs = 16.0;   // sample every ~16 ms (about 60 Hz)
+	double sampleIntervalMs = 16.0;
 	double sampleAccumulator = 0.0;
 
 	std::chrono::high_resolution_clock::time_point lastFrameTime;
+
+	std::filesystem::path assetsRoot = "Assets";
+	std::filesystem::path currentAssetsDir = assetsRoot;
+
+	bool showAssets = false;
+	bool showConfig = true;
+	bool showMenu = true;
 
 public:
 	ModuleEditor();
@@ -30,10 +37,19 @@ public:
 
 	bool init() override;
 	void update() override;
-	void render() override;
+	//void preRender() override;
+	//void render() override;
 
-private:
-	void consoleWindow();
+	ImGuiPass* getImGui() { return imGuiPass; }
+	bool getShowAssets() { return showAssets; }
+	bool getShowConfig() { return showConfig; }
+	bool getShowMenu() { return showMenu; }
+
 	void mainMenu();
 	void configurationWindow();
+	void assetsWindow();
+
+	void setShowAssets(bool v) { showAssets = v; }
+	void setShowConfig(bool v) { showConfig = v; }
+	void setShowMenu(bool v) { showMenu = v; }
 };

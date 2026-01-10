@@ -12,6 +12,7 @@ class ModuleResources;
 class ModuleShaderDescriptors;
 class ModuleSampler;
 class ModuleCamera;
+class ModuleEditor;
 
 class Application
 {
@@ -29,6 +30,7 @@ public:
     ModuleShaderDescriptors* getShaderDescriptors() { return shaderDescriptors; }
     ModuleSampler* getSamplers() { return samplers; }
     ModuleCamera* getCamera() { return camera; }
+    ModuleEditor* getEditor() { return editor; }
 
     
     float                       getFPS() const { return 1000.0f * float(MAX_FPS_TICKS) / tickSum; }
@@ -48,6 +50,7 @@ private:
     ModuleShaderDescriptors* shaderDescriptors = nullptr;
     ModuleSampler* samplers = nullptr;
     ModuleCamera* camera = nullptr;
+    ModuleEditor* editor = nullptr;
 
     uint64_t  lastMilis = 0;
     TickList  tickList;

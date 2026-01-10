@@ -15,23 +15,36 @@
 bool Exercise4::init()
 {
 	createVertexBuffer();
-	createRootSignature();
+	bool success = createRootSignature();
 	createPSO();
 
 	ModuleD3D12* d3d12 = app->getD3D12();
 	ModuleResources* resources = app->getResources();
 	ModuleShaderDescriptors* shaderDescriptors = app->getShaderDescriptors();
-	debugDrawPass = std::make_unique<DebugDrawPass>(d3d12->getDevice(), d3d12->getCommandQueue());
+	debugDrawPass = std::make_unique<DebugDrawPass>(d3d12->getDevice(), d3d12->getCommandQueue(), false);
+	imGuiPass = std::make_unique<ImGuiPass>(d3d12->getDevice(), d3d12->getHwnd());
 
 	textureDog = resources->createTextureFromFile(std::wstring(L"Assets/Textures/dog.dds"));
 	shaderDescriptors->allocateDescriptor();
 	srvIndex = shaderDescriptors->createSRV(textureDog.Get());
 
-	return true;
+
+	return success;
+}
+
+void Exercise4::preRender()
+{
+	imGuiPass->startFrame();
 }
 
 void Exercise4::render()
 {
+	ImGui::Begin("Texture Viewer Options");
+	ImGui::Checkbox("Show grid", &showGrid);
+	ImGui::Checkbox("Show axis", &showAxis);
+	ImGui::Combo("Sampler", &sampler, "Linear/Wrap\0Point/Wrap\0Linear/Clamp\0Point/Clamp", ModuleSampler::COUNT);
+	ImGui::End();
+
 	ModuleD3D12* d3d12 = app->getD3D12();
 	ModuleShaderDescriptors* descriptors = app->getShaderDescriptors();
 	ModuleSampler* samplers = app->getSamplers();
@@ -66,21 +79,21 @@ void Exercise4::render()
 	commandList->SetGraphicsRootSignature(rootSignature.Get());
 	ID3D12DescriptorHeap* descriptorHeaps[] = { descriptors->getHeap(), samplers->getHeap() };
 	commandList->SetGraphicsRoot32BitConstants(0, sizeof(Matrix) / sizeof(UINT32), &mvp, 0);
-
+	
 	commandList->SetDescriptorHeaps(2, descriptorHeaps);
 	commandList->SetGraphicsRootDescriptorTable(1, shaderDescriptors->getGPUHandle(srvIndex));
-	commandList->SetGraphicsRootDescriptorTable(2, samplers->getGPUHandle(ModuleSampler::Type(ModuleSampler::LINEAR_WRAP)));
+	commandList->SetGraphicsRootDescriptorTable(2, samplers->getGPUHandle(ModuleSampler::Type(sampler)));
 
 	commandList->RSSetViewports(1, &viewport);
 	commandList->RSSetScissorRects(1, &scissor);
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 	commandList->DrawInstanced(6, 1, 0, 0);
 
-	dd::xzSquareGrid(-10.0f, 10.0f, 0.0f, 1.0f, dd::colors::LightGray);
-	dd::axisTriad(ddConvert(Matrix::Identity), 0.1f, 2.0f);
+	if (showGrid) dd::xzSquareGrid(-10.0f, 10.0f, 0.0f, 1.0f, dd::colors::LightGray);
+	if (showAxis) dd::axisTriad(ddConvert(Matrix::Identity), 0.1f, 2.0f);
 
 	debugDrawPass->record(commandList, d3d12->getWindowWidth(), d3d12->getWindowHeight(), view, proj);
+	imGuiPass->record(commandList);
 
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(d3d12->getCurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	commandList->ResourceBarrier(1, &barrier);
