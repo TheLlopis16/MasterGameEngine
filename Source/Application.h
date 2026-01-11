@@ -13,6 +13,9 @@ class ModuleShaderDescriptors;
 class ModuleSampler;
 class ModuleCamera;
 class ModuleEditor;
+class ModuleRingBuffer;
+class ModuleRTDescriptors;
+class ModuleDSDescriptors;
 
 class Application
 {
@@ -31,6 +34,10 @@ public:
     ModuleSampler* getSamplers() { return samplers; }
     ModuleCamera* getCamera() { return camera; }
     ModuleEditor* getEditor() { return editor; }
+
+    ModuleRingBuffer* getRingBuffer() { return ringBuffer; }
+    ModuleRTDescriptors* getRTDescriptors() { return rtDescriptors; }
+    ModuleDSDescriptors* getDSDescriptors() { return dsDescriptors; }
 
     
     float                       getFPS() const { return 1000.0f * float(MAX_FPS_TICKS) / tickSum; }
@@ -51,6 +58,10 @@ private:
     ModuleSampler* samplers = nullptr;
     ModuleCamera* camera = nullptr;
     ModuleEditor* editor = nullptr;
+
+    ModuleRingBuffer* ringBuffer = nullptr;
+    ModuleRTDescriptors* rtDescriptors = nullptr;
+    ModuleDSDescriptors* dsDescriptors = nullptr;
 
     uint64_t  lastMilis = 0;
     TickList  tickList;

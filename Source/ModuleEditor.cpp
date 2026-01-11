@@ -4,6 +4,9 @@
 #include "ModuleEditor.h"
 #include "Application.h"
 #include "ModuleD3D12.h"
+#include "ModuleCamera.h"
+#include "Model.h"
+#include "ImGuizmo.h"
 #include <thread>
 
 ModuleEditor::ModuleEditor() {}
@@ -226,4 +229,65 @@ void ModuleEditor::assetsWindow()
     }
 
     ImGui::End();
+}
+
+void ModuleEditor::modelOptions(Model& model)
+{
+    ImGuizmo::SetRect(0, 0, float(app->getD3D12()->getWindowWidth()), float(app->getD3D12()->getWindowHeight()));
+    ImGui::Begin("Model Options");
+    Matrix modelMatrix = model.getModelMatrix();
+    ModuleD3D12* d3d12 = app->getD3D12();
+
+    static ImGuizmo::OPERATION currentOperation(ImGuizmo::TRANSLATE);
+    if (ImGui::IsKeyPressed(ImGuiKey_W))
+        currentOperation = ImGuizmo::TRANSLATE;
+    if (ImGui::IsKeyPressed(ImGuiKey_E))
+        currentOperation = ImGuizmo::ROTATE;
+    if (ImGui::IsKeyPressed(ImGuiKey_R))
+        currentOperation = ImGuizmo::SCALE;
+
+    if (ImGui::RadioButton("Translate", currentOperation == ImGuizmo::TRANSLATE))
+        currentOperation = ImGuizmo::TRANSLATE;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Rotate", currentOperation == ImGuizmo::ROTATE))
+        currentOperation = ImGuizmo::ROTATE;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Scale", currentOperation == ImGuizmo::SCALE))
+        currentOperation = ImGuizmo::SCALE;
+
+    float matrixTranslation[3], matrixRotation[3], matrixScale[3];
+    ImGuizmo::DecomposeMatrixToComponents((float*)&modelMatrix, matrixTranslation, matrixRotation, matrixScale);
+    ImGui::InputFloat3("Translate", matrixTranslation);
+    ImGui::InputFloat3("Rotate", matrixRotation);
+    ImGui::InputFloat3("Scale", matrixScale);
+    ImGuizmo::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation, matrixScale, (float*)&modelMatrix);
+
+    if (ImGui::Button("Reset Transform", ImVec2(128, 32)))
+    {
+        matrixTranslation[0] = 0.0f;
+        matrixTranslation[1] = 0.0f;
+        matrixTranslation[2] = 0.0f;
+
+        matrixRotation[0] = 0.0f;
+        matrixRotation[1] = 0.0f;
+        matrixRotation[2] = 0.0f;
+
+        matrixScale[0] = 0.01f;
+        matrixScale[1] = 0.01f;
+        matrixScale[2] = 0.01f;
+
+        ImGuizmo::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation, matrixScale, (float*)&modelMatrix);
+    }
+
+    const Matrix& viewMatrix = app->getCamera()->getView();
+    unsigned width = d3d12->getWindowWidth();
+    unsigned height = d3d12->getWindowHeight();
+    Matrix projectionMatrix = app->getCamera()->getPerspectiveProjection(float(width) / float(height));
+
+    ImGuizmo::Manipulate((const float*)&viewMatrix, (const float*)&projectionMatrix, currentOperation, ImGuizmo::LOCAL, (float*)&modelMatrix);
+
+    model.setModelMatrix(modelMatrix);
+
+    ImGui::End();
+
 }

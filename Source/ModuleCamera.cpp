@@ -20,6 +20,8 @@ bool ModuleCamera::init()
     position = Vector3(0.0f, 0.0f, 10.0f);
     rotation = Quaternion::CreateFromAxisAngle(Vector3(0.0f, 1.0f, 0.0f), XMConvertToRadians(0.0f));
 
+    model = Matrix::Identity;
+
     Quaternion invRot;
     rotation.Inverse(invRot);
 
@@ -116,4 +118,9 @@ void ModuleCamera::update()
 Matrix ModuleCamera::getPerspectiveProjection(float aspect)
 {
     return Matrix::CreatePerspectiveFieldOfView(XM_PIDIV4, aspect, NEAR_PLANE, FAR_PLANE);
+}
+
+void ModuleCamera::setModelMatrix(const Matrix& newModel)
+{
+    model = newModel;
 }

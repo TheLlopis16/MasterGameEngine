@@ -171,6 +171,7 @@
     <ClInclude Include="3rdParty\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="Application.h" />
     <ClInclude Include="Assignment1.h" />
+    <ClInclude Include="Assignment2.h" />
     <ClInclude Include="DebugDrawPass.h" />
     <ClInclude Include="debug_draw.hpp" />
     <ClInclude Include="Engine.h" />
@@ -178,17 +179,25 @@
     <ClInclude Include="Exercise2.h" />
     <ClInclude Include="Exercise3.h" />
     <ClInclude Include="Exercise4.h" />
+    <ClInclude Include="Exercise5.h" />
+    <ClInclude Include="Exercise6.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="GamePad.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="ImGuiPass.h" />
     <ClInclude Include="Keyboard.h" />
+    <ClInclude Include="Material.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Model.h" />
     <ClInclude Include="Module.h" />
     <ClInclude Include="ModuleCamera.h" />
     <ClInclude Include="ModuleD3D12.h" />
+    <ClInclude Include="ModuleDSDescriptors.h" />
     <ClInclude Include="ModuleEditor.h" />
     <ClInclude Include="ModuleInput.h" />
     <ClInclude Include="ModuleResources.h" />
+    <ClInclude Include="ModuleRingBuffer.h" />
+    <ClInclude Include="ModuleRTDescriptors.h" />
     <ClInclude Include="ModuleSampler.h" />
     <ClInclude Include="ModuleShaderDescriptors.h" />
     <ClInclude Include="Mouse.h" />
@@ -197,6 +206,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SimpleMath.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="utils_gltf.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="3rdParty\imgui-docking\backends\imgui_impl_dx12.cpp">
@@ -261,6 +271,7 @@
     </ClCompile>
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="Assignment1.cpp" />
+    <ClCompile Include="Assignment2.cpp" />
     <ClCompile Include="DebugDrawPass.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -270,6 +281,8 @@
     <ClCompile Include="Exercise2.cpp" />
     <ClCompile Include="Exercise3.cpp" />
     <ClCompile Include="Exercise4.cpp" />
+    <ClCompile Include="Exercise5.cpp" />
+    <ClCompile Include="Exercise6.cpp" />
     <ClCompile Include="GamePad.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -284,11 +297,16 @@
     </ClCompile>
     <ClCompile Include="ImGuiPass.cpp" />
     <ClCompile Include="Keyboard.cpp" />
+    <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Model.cpp" />
     <ClCompile Include="ModuleCamera.cpp" />
     <ClCompile Include="ModuleD3D12.cpp" />
+    <ClCompile Include="ModuleDSDescriptors.cpp" />
     <ClCompile Include="ModuleEditor.cpp" />
     <ClCompile Include="ModuleInput.cpp" />
     <ClCompile Include="ModuleResources.cpp" />
+    <ClCompile Include="ModuleRingBuffer.cpp" />
+    <ClCompile Include="ModuleRTDescriptors.cpp" />
     <ClCompile Include="ModuleSampler.cpp" />
     <ClCompile Include="ModuleShaderDescriptors.cpp" />
     <ClCompile Include="Mouse.cpp" />
@@ -367,6 +385,30 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Exercise5PS.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Exercise5VS.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Exercise6PS.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Exercise6VS.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,5 +1,5 @@
 #include "Globals.h"
-#include "Exercise4.h"
+#include "Exercise5.h"
 #include "Application.h"
 #include "ModuleD3D12.h"
 #include "ModuleResources.h"
@@ -9,41 +9,22 @@
 #include "ModuleEditor.h"
 #include "ModuleShaderDescriptors.h"
 #include "ModuleSampler.h"
+#include "Model.h"
+#include "ImGuizmo.h"
 
-Exercise4::Exercise4() {}
+Exercise5::Exercise5() {}
 
-Exercise4::~Exercise4()
+Exercise5::~Exercise5()
 {
-	delete debugDraw;
+	delete debugDraw, model;
 }
 
-bool Exercise4::init()
+bool Exercise5::init()
 {
 
-	struct Vertex
-	{
-		Vector3 position;
-		Vector2 uv;
-	};
-
-	Vertex vertices[6] =
-	{
-		{ Vector3(-1.0f, -1.0f, 0.0f), Vector2(-0.2f, 1.2f) },
-		{ Vector3(-1.0f, 1.0f, 0.0f), Vector2(-0.2f, -0.2f) },
-		{ Vector3(1.0f, 1.0f, 0.0f), Vector2(1.2f, -0.2f) },
-		{ Vector3(-1.0f, -1.0f, 0.0f), Vector2(-0.2f, 1.2f) },
-		{ Vector3(1.0f, 1.0f, 0.0f), Vector2(1.2f, -0.2f) },
-		{ Vector3(1.0f, -1.0f, 0.0f), Vector2(1.2f, 1.2f) }
-	};
-
-	texture = app->getResources()->createTextureFromFile(std::wstring(L"Assets/Textures/dog.dds"));
-	index = app->getShaderDescriptors()->createSRV(texture.Get());
-
-	vertexBuffer = app->getResources()->createDefaultBuffer(sizeof(vertices), vertices);
-
-	vertexBufferView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-	vertexBufferView.SizeInBytes = sizeof(vertices);
-	vertexBufferView.StrideInBytes = sizeof(Vertex);
+	model = new Model();
+	//model->Load("Assets/Models/Duck/Duck.gltf", "Assets/Models/Duck/");
+	model->Load("Assets/Models/Box/BoxTextured.gltf", "Assets/Models/Box/");
 
 	debugDraw = new DebugDrawPass(app->getD3D12()->getDevice(), app->getD3D12()->getCommandQueue(), false);
 	imgui = app->getEditor()->getImGui();
@@ -54,21 +35,29 @@ bool Exercise4::init()
 	return succeed;
 }
 
-void Exercise4::preRender()
+void Exercise5::preRender()
 {
 	imgui->startFrame();
+	ModuleD3D12* d3d12 = app->getD3D12();
+
+	ImGuizmo::BeginFrame();
+
 }
 
-void Exercise4::update()
+void Exercise5::update()
 {
 	ModuleCamera* camera = app->getCamera();
 
-	Matrix model = camera->getModel();
+	Matrix modelMatrix = model->getModelMatrix();
+	ModuleEditor* editor = app->getEditor();
 
-	//camera->modelTranslate(x, y, z);
+	if (editor->getSamplerIndex() != samplerIndex)
+		samplerIndex = editor->getSamplerIndex();
+
+	camera->setModelMatrix(modelMatrix);
 }
 
-void Exercise4::render()
+void Exercise5::render()
 {
 
 	ModuleD3D12* d3d12 = app->getD3D12();
@@ -77,16 +66,9 @@ void Exercise4::render()
 	ModuleCamera* camera = app->getCamera();
 	ModuleSampler* samplers = app->getSamplers();
 
-	ImGui::ShowDemoWindow();
 	app->getEditor()->mainMenu();
-
-	ImGui::Begin("Model Transform");
-	ImGui::DragFloat("X: ", &x, 0.1f, -20.0f, 20.0f, "%.1f");
-	ImGui::DragFloat("Y: ", &y, 0.1f, -20.0f, 20.0f, "%.1f");
-	ImGui::DragFloat("Z: ", &z, 0.1f, -20.0f, 20.0f, "%.1f");
-	ImGui::End();
-
-	ImGui::Combo("Sampler", &samplerIndex, "Billinear Filtering Wrap\0Point Filtering Wrap\0Billinear Filtering Clamp\0Point Filtering Clamp", 4);
+	
+	app->getEditor()->modelOptions(*model);
 
 	commandList->Reset(d3d12->getCurrentCommandAllocator(), pso.Get());
 
@@ -103,26 +85,52 @@ void Exercise4::render()
 	commandList->ClearDepthStencilView(DSVhandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	commandList->ClearRenderTargetView(RTVhandle, color, 0, nullptr);
 
-	commandList->SetGraphicsRootSignature(rootSignature.Get());
-	commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
 
 	D3D12_VIEWPORT viewport{ 0.0, 0.0, float(d3d12->getWindowWidth()), float(d3d12->getWindowHeight()), 0.0, 1.0 };
 	D3D12_RECT scissor{ 0, 0, d3d12->getWindowWidth(), d3d12->getWindowHeight() };
-
 	commandList->RSSetViewports(1, &viewport);
 	commandList->RSSetScissorRects(1, &scissor);
+
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	commandList->SetGraphicsRoot32BitConstants(0, sizeof(Matrix) / sizeof(UINT32), &mvp, 0);
+
+	commandList->SetGraphicsRootSignature(rootSignature.Get());
 
 	ID3D12DescriptorHeap* dh[] = { descriptors->getHeap(), samplers->getHeap() };
 	commandList->SetDescriptorHeaps(2, dh);
-	commandList->SetGraphicsRootDescriptorTable(1, descriptors->getGPUHandle(index));
-	commandList->SetGraphicsRootDescriptorTable(2, samplers->getGPUHandle(samplerIndex));
-	commandList->DrawInstanced(6, 1, 0, 0);
 
+
+	commandList->SetGraphicsRoot32BitConstants(0, sizeof(Matrix) / sizeof(UINT32), &mvp, 0);
+
+
+	for (uint32_t i = 0; i < model->getNumMeshes(); ++i)
+	{
+		Mesh& mesh = model->getMesh(i);
+
+		commandList->IASetVertexBuffers(0, 1, mesh.getVBV());
+
+		int matIdx = mesh.getMatIndex();
+		if (matIdx < 0) matIdx = 0;
+		Material& mat = model->getMaterial(matIdx);
+
+		//commandList->SetGraphicsRootConstantBufferView(1, mat.getMatGPUAddress());
+
+		commandList->SetGraphicsRootDescriptorTable(2, descriptors->getGPUHandle(mat.getIndex()));
+
+		commandList->SetGraphicsRootDescriptorTable(3, samplers->getGPUHandle(samplerIndex));
+
+		if (mesh.isIndexed())
+		{
+			const auto& ibv = mesh.getIBV();
+			commandList->IASetIndexBuffer(ibv);
+			commandList->DrawIndexedInstanced(mesh.getIndicesNum(), 1, 0, 0, 0);
+		}
+		else
+		{
+			commandList->DrawInstanced(mesh.getVerticesNum(), 1, 0, 0);
+		}
+	}
 
 	dd::xzSquareGrid(-10.0f, 10.0f, 0.0f, 1.0f, dd::colors::LightGray);
-	dd::axisTriad(ddConvert(camera->getModel()), 0.1f, 1.0f);
 	debugDraw->record(commandList, viewport.Width, viewport.Height, camera->getView(), camera->getProjection());
 
 	imgui->record(commandList);
@@ -136,29 +144,21 @@ void Exercise4::render()
 
 }
 
-bool Exercise4::createRootSignature()
+bool Exercise5::createRootSignature()
 {
 	CD3DX12_ROOT_SIGNATURE_DESC signatureDesc = {};
-	CD3DX12_ROOT_PARAMETER rootParameters[3] = {};
+	CD3DX12_ROOT_PARAMETER rootParameters[4] = {};
 	CD3DX12_DESCRIPTOR_RANGE tableRange, sampRange;
 
 	tableRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
-	sampRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, 0, 0);
+	sampRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 4, 0, 0);
 
 	rootParameters[0].InitAsConstants((sizeof(Matrix) / sizeof(UINT32)), 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-	rootParameters[1].InitAsDescriptorTable(1, &tableRange, D3D12_SHADER_VISIBILITY_PIXEL);
-	rootParameters[2].InitAsDescriptorTable(1, &sampRange, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameters[1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameters[2].InitAsDescriptorTable(1, &tableRange, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameters[3].InitAsDescriptorTable(1, &sampRange, D3D12_SHADER_VISIBILITY_PIXEL);
 
-	/*CD3DX12_STATIC_SAMPLER_DESC linearWrapSampler;
-	linearWrapSampler.Init(0,
-		D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP);
-
-	signatureDesc.Init(2, rootParameters, 1, &linearWrapSampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);*/
-
-	signatureDesc.Init(3, rootParameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	signatureDesc.Init(4, rootParameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	ComPtr<ID3DBlob> blob;
 
@@ -168,13 +168,13 @@ bool Exercise4::createRootSignature()
 	return succeed;
 }
 
-bool Exercise4::createPSO()
+bool Exercise5::createPSO()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
 	desc.pRootSignature = rootSignature.Get();
 
-	auto dataVS = DX::ReadData(L"Exercise4VS.cso");
-	auto dataPS = DX::ReadData(L"Exercise4PS.cso");
+	auto dataVS = DX::ReadData(L"Exercise5VS.cso");
+	auto dataPS = DX::ReadData(L"Exercise5PS.cso");
 
 	desc.VS = { dataVS.data(), dataVS.size() };
 	desc.PS = { dataPS.data(), dataPS.size() };
@@ -189,6 +189,7 @@ bool Exercise4::createPSO()
 	desc.SampleDesc = { 1, 0 };
 	desc.SampleMask = 0xffffffff;
 	desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	desc.RasterizerState.FrontCounterClockwise = TRUE;
 	desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);

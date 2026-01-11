@@ -1,5 +1,5 @@
 #include "Globals.h"
-#include "Exercise4.h"
+#include "Assignment2.h"
 #include "Application.h"
 #include "ModuleD3D12.h"
 #include "ModuleResources.h"
@@ -9,41 +9,24 @@
 #include "ModuleEditor.h"
 #include "ModuleShaderDescriptors.h"
 #include "ModuleSampler.h"
+#include "Model.h"
+#include "ImGuizmo.h"
+#include "ModuleRingBuffer.h"
+#include "ModuleRTDescriptors.h"
+#include "ModuleDSDescriptors.h"
 
-Exercise4::Exercise4() {}
+Assignment2::Assignment2() {}
 
-Exercise4::~Exercise4()
+Assignment2::~Assignment2()
 {
-	delete debugDraw;
+	delete debugDraw, model;
 }
 
-bool Exercise4::init()
+bool Assignment2::init()
 {
 
-	struct Vertex
-	{
-		Vector3 position;
-		Vector2 uv;
-	};
-
-	Vertex vertices[6] =
-	{
-		{ Vector3(-1.0f, -1.0f, 0.0f), Vector2(-0.2f, 1.2f) },
-		{ Vector3(-1.0f, 1.0f, 0.0f), Vector2(-0.2f, -0.2f) },
-		{ Vector3(1.0f, 1.0f, 0.0f), Vector2(1.2f, -0.2f) },
-		{ Vector3(-1.0f, -1.0f, 0.0f), Vector2(-0.2f, 1.2f) },
-		{ Vector3(1.0f, 1.0f, 0.0f), Vector2(1.2f, -0.2f) },
-		{ Vector3(1.0f, -1.0f, 0.0f), Vector2(1.2f, 1.2f) }
-	};
-
-	texture = app->getResources()->createTextureFromFile(std::wstring(L"Assets/Textures/dog.dds"));
-	index = app->getShaderDescriptors()->createSRV(texture.Get());
-
-	vertexBuffer = app->getResources()->createDefaultBuffer(sizeof(vertices), vertices);
-
-	vertexBufferView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-	vertexBufferView.SizeInBytes = sizeof(vertices);
-	vertexBufferView.StrideInBytes = sizeof(Vertex);
+	model = new Model();
+	model->Load("Assets/Models/Duck/Duck.gltf", "Assets/Models/Duck/");
 
 	debugDraw = new DebugDrawPass(app->getD3D12()->getDevice(), app->getD3D12()->getCommandQueue(), false);
 	imgui = app->getEditor()->getImGui();
@@ -54,39 +37,41 @@ bool Exercise4::init()
 	return succeed;
 }
 
-void Exercise4::preRender()
+void Assignment2::preRender()
 {
+	ModuleRingBuffer* ringBuffer = app->getRingBuffer();
+
+	ringBuffer->preRender();
+
 	imgui->startFrame();
+	ImGuizmo::BeginFrame();
 }
 
-void Exercise4::update()
+void Assignment2::update()
 {
 	ModuleCamera* camera = app->getCamera();
 
-	Matrix model = camera->getModel();
+	Matrix modelMatrix = model->getModelMatrix();
+	ModuleEditor* editor = app->getEditor();
 
-	//camera->modelTranslate(x, y, z);
+	if (editor->getSamplerIndex() != samplerIndex)
+		samplerIndex = editor->getSamplerIndex();
+
+	camera->setModelMatrix(modelMatrix);
 }
 
-void Exercise4::render()
+void Assignment2::render()
 {
-
 	ModuleD3D12* d3d12 = app->getD3D12();
 	ModuleShaderDescriptors* descriptors = app->getShaderDescriptors();
 	ID3D12GraphicsCommandList4* commandList = d3d12->getCommandList();
 	ModuleCamera* camera = app->getCamera();
 	ModuleSampler* samplers = app->getSamplers();
+	ModuleRingBuffer* ringBuffer = app->getRingBuffer();
 
-	ImGui::ShowDemoWindow();
 	app->getEditor()->mainMenu();
 
-	ImGui::Begin("Model Transform");
-	ImGui::DragFloat("X: ", &x, 0.1f, -20.0f, 20.0f, "%.1f");
-	ImGui::DragFloat("Y: ", &y, 0.1f, -20.0f, 20.0f, "%.1f");
-	ImGui::DragFloat("Z: ", &z, 0.1f, -20.0f, 20.0f, "%.1f");
-	ImGui::End();
-
-	ImGui::Combo("Sampler", &samplerIndex, "Billinear Filtering Wrap\0Point Filtering Wrap\0Billinear Filtering Clamp\0Point Filtering Clamp", 4);
+	app->getEditor()->modelOptions(*model);
 
 	commandList->Reset(d3d12->getCurrentCommandAllocator(), pso.Get());
 
@@ -103,26 +88,78 @@ void Exercise4::render()
 	commandList->ClearDepthStencilView(DSVhandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	commandList->ClearRenderTargetView(RTVhandle, color, 0, nullptr);
 
-	commandList->SetGraphicsRootSignature(rootSignature.Get());
-	commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
 
 	D3D12_VIEWPORT viewport{ 0.0, 0.0, float(d3d12->getWindowWidth()), float(d3d12->getWindowHeight()), 0.0, 1.0 };
 	D3D12_RECT scissor{ 0, 0, d3d12->getWindowWidth(), d3d12->getWindowHeight() };
-
 	commandList->RSSetViewports(1, &viewport);
 	commandList->RSSetScissorRects(1, &scissor);
+
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	commandList->SetGraphicsRoot32BitConstants(0, sizeof(Matrix) / sizeof(UINT32), &mvp, 0);
+
+	commandList->SetGraphicsRootSignature(rootSignature.Get());
 
 	ID3D12DescriptorHeap* dh[] = { descriptors->getHeap(), samplers->getHeap() };
 	commandList->SetDescriptorHeaps(2, dh);
-	commandList->SetGraphicsRootDescriptorTable(1, descriptors->getGPUHandle(index));
-	commandList->SetGraphicsRootDescriptorTable(2, samplers->getGPUHandle(samplerIndex));
-	commandList->DrawInstanced(6, 1, 0, 0);
 
+	PerFrame pf;
+	pf.lightDir = Vector3(lightDir[0], lightDir[1], lightDir[2]);
+	pf.ambientColor = ambient * ambientValue;
+	pf.viewPos = camera->getPosition();
+
+	pf.lightDir.Normalize();
+
+	RingAlloc pfAlloc = ringBuffer->allocBuffer(sizeof(PerFrame));
+	memcpy(pfAlloc.cpu, &pf, sizeof(PerFrame));
+
+	commandList->SetGraphicsRootConstantBufferView(1, pfAlloc.gpu);
+
+
+	commandList->SetGraphicsRoot32BitConstants(0, sizeof(Matrix) / sizeof(UINT32), &mvp, 0);
+
+	imguiMaterial();
+
+
+	for (uint32_t i = 0; i < model->getNumMeshes(); ++i)
+	{
+		Mesh& mesh = model->getMesh(i);
+
+		commandList->IASetVertexBuffers(0, 1, mesh.getVBV());
+
+		int matIdx = mesh.getMatIndex();
+		if (matIdx < 0) matIdx = 0;
+		Material& mat = model->getMaterial(matIdx);
+
+		Matrix modelMat = model->getModelMatrix();
+		Matrix normalMat = modelMat.Invert().Transpose();
+
+		PerInstance pi = {};
+		pi.modelMat = modelMat;
+		pi.normalMat = normalMat;
+		mat.setPhong(kd, ks, shiny);
+		pi.material = mat.getPhong();
+
+		RingAlloc piAlloc = ringBuffer->allocBuffer(sizeof(PerInstance));
+		memcpy(piAlloc.cpu, &pi, sizeof(PerInstance));
+
+		commandList->SetGraphicsRootConstantBufferView(2, piAlloc.gpu);
+
+		commandList->SetGraphicsRootDescriptorTable(3, descriptors->getGPUHandle(mat.getIndex()));
+
+		commandList->SetGraphicsRootDescriptorTable(4, samplers->getGPUHandle(samplerIndex));
+
+		if (mesh.isIndexed())
+		{
+			const auto& ibv = mesh.getIBV();
+			commandList->IASetIndexBuffer(ibv);
+			commandList->DrawIndexedInstanced(mesh.getIndicesNum(), 1, 0, 0, 0);
+		}
+		else
+		{
+			commandList->DrawInstanced(mesh.getVerticesNum(), 1, 0, 0);
+		}
+	}
 
 	dd::xzSquareGrid(-10.0f, 10.0f, 0.0f, 1.0f, dd::colors::LightGray);
-	dd::axisTriad(ddConvert(camera->getModel()), 0.1f, 1.0f);
 	debugDraw->record(commandList, viewport.Width, viewport.Height, camera->getView(), camera->getProjection());
 
 	imgui->record(commandList);
@@ -133,32 +170,24 @@ void Exercise4::render()
 
 	ID3D12CommandList* lists[] = { commandList };
 	d3d12->getCommandQueue()->ExecuteCommandLists(1, lists);
-
 }
 
-bool Exercise4::createRootSignature()
+bool Assignment2::createRootSignature()
 {
 	CD3DX12_ROOT_SIGNATURE_DESC signatureDesc = {};
-	CD3DX12_ROOT_PARAMETER rootParameters[3] = {};
+	CD3DX12_ROOT_PARAMETER rootParameters[5] = {};
 	CD3DX12_DESCRIPTOR_RANGE tableRange, sampRange;
 
 	tableRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
-	sampRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, 0, 0);
+	sampRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 4, 0, 0);
 
 	rootParameters[0].InitAsConstants((sizeof(Matrix) / sizeof(UINT32)), 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-	rootParameters[1].InitAsDescriptorTable(1, &tableRange, D3D12_SHADER_VISIBILITY_PIXEL);
-	rootParameters[2].InitAsDescriptorTable(1, &sampRange, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameters[1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
+	rootParameters[2].InitAsConstantBufferView(2, 0, D3D12_SHADER_VISIBILITY_ALL);
+	rootParameters[3].InitAsDescriptorTable(1, &tableRange, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameters[4].InitAsDescriptorTable(1, &sampRange, D3D12_SHADER_VISIBILITY_PIXEL);
 
-	/*CD3DX12_STATIC_SAMPLER_DESC linearWrapSampler;
-	linearWrapSampler.Init(0,
-		D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP);
-
-	signatureDesc.Init(2, rootParameters, 1, &linearWrapSampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);*/
-
-	signatureDesc.Init(3, rootParameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	signatureDesc.Init(5, rootParameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	ComPtr<ID3DBlob> blob;
 
@@ -168,19 +197,20 @@ bool Exercise4::createRootSignature()
 	return succeed;
 }
 
-bool Exercise4::createPSO()
+bool Assignment2::createPSO()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
 	desc.pRootSignature = rootSignature.Get();
 
-	auto dataVS = DX::ReadData(L"Exercise4VS.cso");
-	auto dataPS = DX::ReadData(L"Exercise4PS.cso");
+	auto dataVS = DX::ReadData(L"Exercise7VS.cso");
+	auto dataPS = DX::ReadData(L"Exercise7PS.cso");
 
 	desc.VS = { dataVS.data(), dataVS.size() };
 	desc.PS = { dataPS.data(), dataPS.size() };
 
 	D3D12_INPUT_ELEMENT_DESC inputLayout[] = { {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0} };
+		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0} };
 	desc.InputLayout = { inputLayout, sizeof(inputLayout) / sizeof(D3D12_INPUT_ELEMENT_DESC) };
 
 	desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -189,6 +219,7 @@ bool Exercise4::createPSO()
 	desc.SampleDesc = { 1, 0 };
 	desc.SampleMask = 0xffffffff;
 	desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	desc.RasterizerState.FrontCounterClockwise = TRUE;
 	desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -196,4 +227,20 @@ bool Exercise4::createPSO()
 	bool succeed = SUCCEEDED(app->getD3D12()->getDevice()->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pso)));
 
 	return succeed;
+}
+
+void Assignment2::imguiMaterial()
+{
+	ImGui::Begin("Material Options");
+	ImGui::DragFloat("Diffuse: ", &kd, 0.01f, 0.1f, 1.0f, "%.2f");
+	ImGui::DragFloat("Specular: ", &ks, 0.01f, 0.0f, 10.0f, "%.2f");
+	ImGui::DragFloat("Shininess: ", &shiny, 1.0f, 0.1f, 128.0f, "%1.f");
+	ImGui::Separator();
+	ImGui::Text("Light Options");
+	ImGui::DragFloat("Light X: ", &lightDir[0], 0.1f, -10.0f, 10.0f, "%.1f");
+	ImGui::DragFloat("Light Y: ", &lightDir[1], 0.1f, -10.0f, 10.0f, "%.1f");
+	ImGui::DragFloat("Light Z: ", &lightDir[2], 0.1f, -10.0f, 10.0f, "%.1f");
+	ImGui::DragFloat("Ambient : ", &ambientValue, 0.01f, 0.0f, 0.3f, "%.2f");
+	ImGui::End();
+
 }

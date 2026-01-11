@@ -28,6 +28,7 @@ class ModuleD3D12 : public Module
 	uint64_t fenceCounter = 0;
 	uint64_t fenceValues[FRAMES_IN_FLIGHT] = { 0, 0, 0 };
 	unsigned currentIndex = 0;
+	unsigned currentBufferIndex = 0;
 
 	unsigned windowWidth = 0;
 	unsigned windowHeight = 0;
@@ -47,9 +48,10 @@ public:
 	HWND getHwnd() { return hWnd; }
 	ID3D12Device5* getDevice() { return device.Get(); }
 	ID3D12CommandQueue* getCommandQueue() { return commandQueue.Get(); }
-	ID3D12GraphicsCommandList* getCommandList() { return commandList.Get(); }
+	ID3D12GraphicsCommandList4* getCommandList() { return commandList.Get(); }
 	ID3D12CommandAllocator* getCurrentCommandAllocator() { return commandAllocators[currentIndex].Get(); }
 	ID3D12Resource* getCurrentBackBuffer() { return backBuffers[currentIndex].Get(); }
+	const unsigned& getCurrentBackBufferIndex() const { return currentBufferIndex; }
 
 	D3D12_CPU_DESCRIPTOR_HANDLE getRenderTargetDescriptor();
 	D3D12_CPU_DESCRIPTOR_HANDLE getDepthStencilDescriptor();

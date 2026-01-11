@@ -6,6 +6,7 @@
 
 class ImGuiPass;
 class ModuleD3D12;
+class Model;
 
 class ModuleEditor : public Module
 {
@@ -37,6 +38,7 @@ public:
 
 	bool init() override;
 	void update() override;
+	int samplerIndex = 0;
 	//void preRender() override;
 	//void render() override;
 
@@ -44,10 +46,12 @@ public:
 	bool getShowAssets() { return showAssets; }
 	bool getShowConfig() { return showConfig; }
 	bool getShowMenu() { return showMenu; }
+	const int& getSamplerIndex() const { return samplerIndex; }
 
 	void mainMenu();
 	void configurationWindow();
 	void assetsWindow();
+	void modelOptions(Model& model);
 
 	void setShowAssets(bool v) { showAssets = v; }
 	void setShowConfig(bool v) { showConfig = v; }

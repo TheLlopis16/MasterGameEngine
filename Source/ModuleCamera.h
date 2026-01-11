@@ -19,6 +19,9 @@ class ModuleCamera : public Module
     Quaternion rotation;
     Vector3 position;
     Matrix view;
+    Matrix model;
+    Matrix projection;
+    Matrix mvp;
     bool enabled = true;
     int prevWheel = 0;
 
@@ -37,8 +40,12 @@ public:
     void setYaw(float yaw) { params.yaw = yaw; }
     void setPitch(float pitch) { params.pitch = pitch; }
     void setWorldSpacePosition(const Vector3& wsp) { params.worldSpacePosition = wsp; }
+    void setModelMatrix(const Matrix& newModel);
 
     const Matrix& getView() const { return view; }
+    const Matrix getProjection() { return this->projection; }
+    const Matrix getModel() { return this->model; }
+    const Matrix getMVP() { return this->mvp; }
     const Quaternion& getRotation() const { return rotation; }
     const Vector3& getPosition() const { return position; }
 
